@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUXE Fashion Gallery</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', sans-serif;
+            background: #000;
+            color: #fff;
+            overflow-x: hidden;
+            cursor: none;
+        }
+
+        /* Custom Cursor */
+        .cursor {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            transition: all 0.15s ease;
+            mix-blend-mode: difference;
+        }
+
+        .cursor-follower {
+            width: 50px;
+            height: 50px;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 9998;
+            transition: all 0.3s ease;
+            mix-blend-mode: difference;
+        }
+
+        /* 3D Canvas Background */
+        #canvas3d {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 30px 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            background: linear-gradient(45deg, #fff, #888);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 40px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: #fff;
+            text-decoration: none;
+            font-size: 14px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 1px;
+            background: #fff;
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        /* Hero Section */
+        .hero {
+            position: relative;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            z-index: 1;
+        }
+
+        .hero-content h1 {
+            font-size: 120px;
+            font-weight: 900;
+            letter-spacing: -5px;
+            margin-bottom: 20px;
+            opacity: 0;
+            transform: translateY(100px);
+            animation: fadeInUp 1s ease forwards;
+        }
+
+        .hero-content p {
+            font-size: 24px;
+            letter-spacing: 8px;
+            text-transform: uppercase;
+            opacity: 0;
+            transform: translateY(50px);
+            animation: fadeInUp 1s ease 0.3s forwards;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .cta-button {
+            display: inline-block;
+            margin-top: 50px;
+            padding: 20px 50px;
+            border: 2px solid #fff;
+            color: #fff;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-size: 14px;
+            position: relative;
+            overflow: hidden;
+            opacity: 0;
+            animation: fadeInUp 1s ease 0.6s forwards;
+            transition: all 0.4s ease;
+        }
+
+        .cta-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            transition: left 0.4s ease;
+            z-index: -1;
+        }
+
+        .cta-button:hover {
+            color: #000;
+        }
+
+        .cta-button:hover::before {
+            left: 0;
+        }
+
+        /* Gallery Section */
+        .gallery-section {
+            position: relative;
+            padding: 150px 60px;
+            z-index: 1;
+        }
+
+        .section-title {
+            font-size: 80px;
+            font-weight: 900;
+            margin-bottom: 100px;
+            letter-spacing: -3px;
+            opacity: 0;
+            transform: translateX(-100px);
+        }
+
+        .section-title.visible {
+            animation: slideInLeft 1s ease forwards;
+        }
+
+        @keyframes slideInLeft {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 40px;
+            margin-bottom: 150px;
+        }
+
+        .gallery-item {
+            position: relative;
+            height: 500px;
+            overflow: hidden;
+            opacity: 0;
+            transform: scale(0.8);
+            transition: all 0.5s ease;
+        }
+
+        .gallery-item.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .gallery-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, rgba(0,0,0,0.5), transparent);
+            z-index: 1;
+            transition: opacity 0.4s ease;
+        }
+
+        .gallery-item:hover::before {
+            opacity: 0;
+        }
+
+        .gallery-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.6s ease;
+        }
+
+        .gallery-item:hover .gallery-image {
+            transform: scale(1.1);
+        }
+
+        .gallery-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 30px;
+            background: linear-gradient(0deg, rgba(0,0,0,0.9), transparent);
+            transform: translateY(100%);
+            transition: transform 0.4s ease;
+            z-index: 2;
+        }
+
+        .gallery-item:hover .gallery-overlay {
+            transform: translateY(0);
+        }
+
+        .gallery-overlay h3 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+
+        .gallery-overlay p {
+            font-size: 14px;
+            color: #aaa;
+            letter-spacing: 1px;
+        }
+
+        /* Collections Section */
+        .collections {
+            position: relative;
+            padding: 150px 60px;
+            background: linear-gradient(180deg, #000 0%, #1a1a1a 100%);
+            z-index: 1;
+        }
+
+        .collection-cards {
+            display: flex;
+            gap: 30px;
+            overflow-x: auto;
+            padding: 50px 0;
+            scroll-behavior: smooth;
+        }
+
+        .collection-cards::-webkit-scrollbar {
+            display: none;
+        }
+
+        .collection-card {
+            min-width: 350px;
+            height: 450px;
+            background: #222;
+            border-radius: 20px;
+            padding: 40px;
+            position: relative;
+            transition: all 0.4s ease;
+            opacity: 0;
+            transform: translateY(50px);
+        }
+
+        .collection-card.visible {
+            animation: fadeInUp 0.8s ease forwards;
+        }
+
+        .collection-card:hover {
+            transform: translateY(-20px);
+            box-shadow: 0 30px 60px rgba(255,255,255,0.1);
+        }
+
+        .collection-number {
+            font-size: 80px;
+            font-weight: 900;
+            opacity: 0.1;
+            position: absolute;
+            top: 20px;
+            right: 30px;
+        }
+
+        .collection-card h3 {
+            font-size: 32px;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+        }
+
+        .collection-card p {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #aaa;
+            margin-bottom: 30px;
+        }
+
+        .collection-link {
+            display: inline-block;
+            color: #fff;
+            text-decoration: none;
+            font-size: 14px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            position: relative;
+            padding-bottom: 5px;
+        }
+
+        .collection-link::after {
+            content: '→';
+            margin-left: 10px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .collection-link:hover::after {
+            margin-left: 20px;
+        }
+
+        /* Footer */
+        footer {
+            position: relative;
+            padding: 100px 60px;
+            text-align: center;
+            background: #000;
+            z-index: 1;
+        }
+
+        footer h2 {
+            font-size: 60px;
+            margin-bottom: 30px;
+            letter-spacing: 3px;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            margin-top: 40px;
+        }
+
+        .social-links a {
+            width: 50px;
+            height: 50px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .social-links a:hover {
+            background: #fff;
+            color: #000;
+            transform: scale(1.1);
+        }
+
+        /* Scroll Indicator */
+        .scroll-indicator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #fff, #888);
+            z-index: 9999;
+            transform-origin: 0%;
+        }
+
+        @media (max-width: 768px) {
+            .hero-content h1 {
+                font-size: 60px;
+            }
+            .section-title {
+                font-size: 50px;
+            }
+            .gallery-grid {
+                grid-template-columns: 1fr;
+            }
+            nav {
+                padding: 20px 30px;
+            }
+            .nav-links {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="cursor"></div>
+    <div class="cursor-follower"></div>
+    <div class="scroll-indicator"></div>
+    <canvas id="canvas3d"></canvas>
+
+    <nav>
+        <div class="logo">LUXE</div>
+        <ul class="nav-links">
+            <li><a href="#home">Home</a></li>
+            <li><a href="#gallery">Gallery</a></li>
+            <li><a href="#collections">Collections</a></li>
+            <li><a href="#contact">Contact</a></li>
+        </ul>
+    </nav>
+
+    <section class="hero" id="home">
+        <div class="hero-content">
+            <h1>FASHION<br>REDEFINED</h1>
+            <p>Luxury Meets Innovation</p>
+            <a href="#gallery" class="cta-button">Explore Collection</a>
+        </div>
+    </section>
+
+    <section class="gallery-section" id="gallery">
+        <h2 class="section-title">Featured Gallery</h2>
+        <div class="gallery-grid">
+            <div class="gallery-item">
+                <img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800" alt="Fashion 1" class="gallery-image">
+                <div class="gallery-overlay">
+                    <h3>Spring Collection</h3>
+                    <p>Elegant designs for modern aesthetics</p>
+                </div>
+            </div>
+            <div class="gallery-item">
+                <img src="https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800" alt="Fashion 2" class="gallery-image">
+                <div class="gallery-overlay">
+                    <h3>Urban Style</h3>
+                    <p>Contemporary fashion for city life</p>
+                </div>
+            </div>
+            <div class="gallery-item">
+                <img src="https://images.unsplash.com/photo-1445205170230-053b83016050?w=800" alt="Fashion 3" class="gallery-image">
+                <div class="gallery-overlay">
+                    <h3>Minimalist Line</h3>
+                    <p>Less is more in every detail</p>
+                </div>
+            </div>
+            <div class="gallery-item">
+                <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800" alt="Fashion 4" class="gallery-image">
+                <div class="gallery-overlay">
+                    <h3>Evening Wear</h3>
+                    <p>Sophistication for special moments</p>
+                </div>
+            </div>
+            <div class="gallery-item">
+                <img src="https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=800" alt="Fashion 5" class="gallery-image">
+                <div class="gallery-overlay">
+                    <h3>Avant-Garde</h3>
+                    <p>Pushing boundaries of design</p>
+                </div>
+            </div>
+            <div class="gallery-item">
+                <img src="https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=800" alt="Fashion 6" class="gallery-image">
+                <div class="gallery-overlay">
+                    <h3>Classic Revival</h3>
+                    <p>Timeless pieces reimagined</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="collections" id="collections">
+        <h2 class="section-title">Our Collections</h2>
+        <div class="collection-cards">
+            <div class="collection-card">
+                <span class="collection-number">01</span>
+                <h3>New Arrivals</h3>
+                <p>Discover the latest trends and exclusive pieces that define contemporary fashion.</p>
+                <a href="#" class="collection-link">View More</a>
+            </div>
+            <div class="collection-card">
+                <span class="collection-number">02</span>
+                <h3>Best Sellers</h3>
+                <p>Our most loved pieces, chosen by fashion enthusiasts worldwide.</p>
+                <a href="#" class="collection-link">View More</a>
+            </div>
+            <div class="collection-card">
+                <span class="collection-number">03</span>
+                <h3>Limited Edition</h3>
+                <p>Exclusive designs available for a limited time only.</p>
+                <a href="#" class="collection-link">View More</a>
+            </div>
+            <div class="collection-card">
+                <span class="collection-number">04</span>
+                <h3>Sustainable</h3>
+                <p>Fashion that cares for the planet and future generations.</p>
+                <a href="#" class="collection-link">View More</a>
+            </div>
+        </div>
+    </section>
+
+    <footer id="contact">
+        <h2>Let's Create Something Beautiful Together</h2>
+        <div class="social-links">
+            <a href="#">IN</a>
+            <a href="#">TW</a>
+            <a href="#">FB</a>
+            <a href="#">IG</a>
+        </div>
+        <p style="margin-top: 50px; color: #666;">© 2026 LUXE Fashion. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Custom Cursor
+        const cursor = document.querySelector('.cursor');
+        const follower = document.querySelector('.cursor-follower');
+        
+        let mouseX = 0, mouseY = 0;
+        let followerX = 0, followerY = 0;
+
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            cursor.style.left = mouseX + 'px';
+            cursor.style.top = mouseY + 'px';
+        });
+
+        function animateFollower() {
+            followerX += (mouseX - followerX) * 0.1;
+            followerY += (mouseY - followerY) * 0.1;
+            follower.style.left = followerX + 'px';
+            follower.style.top = followerY + 'px';
+            requestAnimationFrame(animateFollower);
+        }
+        animateFollower();
+
+        // Three.js 3D Background
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas3d'), alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        const geometry = new THREE.TorusGeometry(10, 3, 16, 100);
+        const material = new THREE.MeshBasicMaterial({ 
+            color: 0xffffff, 
+            wireframe: true,
+            transparent: true,
+            opacity: 0.1
+        });
+        const torus = new THREE.Mesh(geometry, material);
+        scene.add(torus);
+
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlesCount = 1000;
+        const posArray = new Float32Array(particlesCount * 3);
+
+        for(let i = 0; i < particlesCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 100;
+        }
+
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        const particlesMaterial = new THREE.PointsMaterial({
+            size: 0.05,
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.5
+        });
+
+        const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particlesMesh);
+
+        camera.position.z = 30;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            torus.rotation.x += 0.001;
+            torus.rotation.y += 0.002;
+            particlesMesh.rotation.y += 0.0005;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Scroll Progress Indicator
+        const scrollIndicator = document.querySelector('.scroll-indicator');
+        window.addEventListener('scroll', () => {
+            const scrollTop = window.pageYOffset;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const scrollPercent = scrollTop / docHeight;
+            scrollIndicator.style.transform = `scaleX(${scrollPercent})`;
+        });
+
+        // Intersection Observer for animations
+        const observerOptions = {
+            threshold: 0.2,
+            rootMargin: '0px 0px -100px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.gallery-item, .section-title, .collection-card').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        // Parallax effect on scroll
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const heroContent = document.querySelector('.hero-content');
+            if (heroContent) {
+                heroContent.style.transform = `translateY(${scrolled * 0.5}px)`;
+                heroContent.style.opacity = 1 - scrolled / 700;
+            }
+        });
+    </script>
+</body>
+</html>
